@@ -2,6 +2,7 @@ package com.github.asciborek.concurrency;
 
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -33,6 +34,22 @@ public class CompletableFutureTest {
     });
     CompletableFuture<Object> anyOfFuture = CompletableFuture.anyOf(secondCompletedFuture, thirdCompletedFuture, firstCompletedFuture);
     Awaitility.await().atMost(Duration.ofSeconds(2)).untilAsserted(() -> Assertions.assertThat(anyOfFuture.get()).isEqualTo("firstCompletedFuture"));
+  }
+
+  @Test
+  void anyOfReturnsExceptionallyIfFirstCompletedFutureThrowsException() {
+    CompletableFuture<String> exceptionallyComplementedFuture = CompletableFuture.supplyAsync(() -> {
+      sleep(1);
+      throw new RuntimeException();
+    });
+    CompletableFuture<String> complementedFuture = CompletableFuture.supplyAsync(() -> {
+      sleep(3);
+      return "completedFuture";
+    });
+    CompletableFuture<Object> anyOfFuture = CompletableFuture.anyOf(complementedFuture, exceptionallyComplementedFuture);
+
+    Awaitility.await().atMost(Duration.ofSeconds(2)).untilAsserted(() -> Assertions.assertThatThrownBy(anyOfFuture::get).isInstanceOf(
+        ExecutionException.class));
   }
 
   @Test
